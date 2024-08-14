@@ -30,19 +30,19 @@ def random_sampling_from_matrices(
     Randomly samples points from the matrix or list of matrices and performs linear interpolation to get the values at those points.
 
     Parameters:
-    mat (Union[NDArray[np.float64], List[NDArray[np.float64]]]): Nx * Ny matrix or list of Nx * Ny matrices with float elements.
-    num (int): Number of random samples.
+        mat (Union[NDArray[np.float64], List[NDArray[np.float64]]]): Nx * Ny matrix or list of Nx * Ny matrices with float elements.
+        num (int): Number of random samples.
 
     Returns:
-    NDArray[np.float64]: Nx * Ny * (len(mat)+2) array with all float elements. The shape will be (num, 2+len(mat)),
-                         where each row contains [x, y, mat1_value, mat2_value, ...].
+        NDArray[np.float64]: Nx * Ny * (len(mat)+2) array with all float elements. The shape will be (num, 2+len(mat)),
+                            where each row contains [x, y, mat1_value, mat2_value, ...].
 
     Example:
-    >>> mat1 = np.array([[1.0, 2.0], [3.0, 4.0]])
-    >>> mat2 = np.array([[5.0, 6.0], [7.0, 8.0]])
-    >>> random_sampling([mat1, mat2], 2)
-    array([[0.5       , 0.5       , 2.5       , 6.5       ],
-           [1.3       , 1.7       , 3.52      , 7.52      ]])
+        >>> mat1 = np.array([[1.0, 2.0], [3.0, 4.0]])
+        >>> mat2 = np.array([[5.0, 6.0], [7.0, 8.0]])
+        >>> random_sampling([mat1, mat2], 2)
+        array([[0.5       , 0.5       , 2.5       , 6.5       ],
+            [1.3       , 1.7       , 3.52      , 7.52      ]])
     """
     if isinstance(mat, list):
         matrices = mat
@@ -66,11 +66,11 @@ def random_point(Nx: int, Ny: int) -> Tuple[float, float]:
     Generates a random point within the given Nx by Ny range.
 
     Parameters:
-    Nx (int): The number of rows in the matrix.
-    Ny (int): The number of columns in the matrix.
+        Nx (int): The number of rows in the matrix.
+        Ny (int): The number of columns in the matrix.
 
     Returns:
-    Tuple[float, float]: A tuple containing the x and y coordinates.
+        Tuple[float, float]: A tuple containing the x and y coordinates.
     """
     x = np.random.uniform(0, Nx - 1)
     y = np.random.uniform(0, Ny - 1)
@@ -82,12 +82,12 @@ def interpolate(mat: NDArray[np.float64], x: float, y: float) -> float:
     Performs bilinear interpolation for the given matrix at the point (x, y).
 
     Parameters:
-    mat (NDArray[np.float64]): The input matrix.
-    x (float): The x coordinate.
-    y (float): The y coordinate.
+        mat (NDArray[np.float64]): The input matrix.
+        x (float): The x coordinate.
+        y (float): The y coordinate.
 
     Returns:
-    float: The interpolated value at the point (x, y).
+        float: The interpolated value at the point (x, y).
     """
     Nx, Ny = mat.shape
 
@@ -114,36 +114,48 @@ def interpolate(mat: NDArray[np.float64], x: float, y: float) -> float:
 
 @overload
 def select_specific_phase(
-    res: RandomSamplingResult, phase: int
+    mat: RandomSamplingResult, phase: int
 ) -> RandomSamplingResult: ...
 @overload
 def select_specific_phase(
-    res: RandomSamplingResult, phase: list[int]
+    mat: RandomSamplingResult, phase: list[int]
 ) -> RandomSamplingResult: ...
 
 
 def select_specific_phase(
-    res: RandomSamplingResult, phase: int | list[int]
+    mat: RandomSamplingResult, phase: int | list[int]
 ) -> RandomSamplingResult:
-    if res.shape[1] == 4:
+    """filter the matrix whose type is RandomSamplingResult and extract specific phase.
+
+    Args:
+        mat (RandomSamplingResult): input matrix
+        phase (int | list[int]): phase id or list of them. phase id is 0, 1 in binary and 0, 1, 2 in ternary.
+
+    Raises:
+        TypeError: input matrix shape error
+
+    Returns:
+        RandomSamplingResult: the filtered matrix.
+    """
+    if mat.shape[1] == 4:
 
         def get_main_phase(a: NDArray) -> int:
             return int(np.argmax(np.array([a[2], a[3], 1 - a[2] - a[3]])))
-    elif res.shape[1] == 3:
+    elif mat.shape[1] == 3:
 
         def get_main_phase(a: NDArray) -> int:
             return int(np.argmax(np.array([a[2], 1 - a[2]])))
     else:
-        TypeError("res.shape[1] must be 3 or 4")
+        TypeError("mat.shape[1] must be 3 or 4")
     if isinstance(phase, int):
-        return RandomSamplingResult(npFilter(lambda x: get_main_phase(x) == phase, res))
+        return RandomSamplingResult(npFilter(lambda x: get_main_phase(x) == phase, mat))
     elif isinstance(phase, list):
-        return RandomSamplingResult(npFilter(lambda x: get_main_phase(x) in phase, res))
+        return RandomSamplingResult(npFilter(lambda x: get_main_phase(x) in phase, mat))
     else:
         raise TypeError("phase must be int or list[int]")
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     con1 = np.load("result/output_2024-08-05-12-19-32/con1_60.npy")
     con2 = np.load("result/output_2024-08-05-12-19-32/con2_60.npy")
     res = random_sampling_from_matrices([con1, con2], 10000)
