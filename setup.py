@@ -1,10 +1,11 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='tda_for_phase_field',  # パッケージ名（pip listで表示される）
-    version="0.0.3",  # バージョン
-    description="tda analysis for 2d phase field simulation of non-elastic lamellae",  # 説明
-    author='Furukawa Tan',  # 作者名
-    packages=find_packages(),  # 使うモジュール一覧を指定する
-    license='MIT'  # ライセンス
+    name="tda_for_phase_field",
+    version="0.0.3",
+    description="tda analysis for 2d phase field simulation of non-elastic lamellae",
+    author="Furukawa Tan",
+    install_requires=["matplotlib", "numpy", "persim", "ripser"],
+    packages=find_packages(),
+    license="MIT",
 )
