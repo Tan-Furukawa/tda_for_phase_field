@@ -120,13 +120,13 @@ def plot_persistence_image_from_tda_diagram(
     if isinstance(imgs, list):
         pimgr = PersistenceImager()
         for img in imgs:
-            plt.figure(figsize=(12, 12))
+            plt.figure(figsize=(5, 5))
             ax = plt.subplot(111)
             pimgr.plot_image(img, ax)
             plt.title("PI of $H_1$ for noise")
     else:
         pimgr = PersistenceImager()
-        plt.figure(figsize=(12, 12))
+        plt.figure(figsize=(5, 5))
         ax = plt.subplot(111)
         pimgr.plot_image(imgs, ax)
         plt.title("PI of $H_1$ for noise")

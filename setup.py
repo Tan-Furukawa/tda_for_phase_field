@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="tda_for_phase_field",
-    version="0.1.0",
+    version="0.1.1",
     description="tda analysis for 2d phase field simulation of non-elastic lamellae",
     author="Furukawa Tan",
     install_requires=[
