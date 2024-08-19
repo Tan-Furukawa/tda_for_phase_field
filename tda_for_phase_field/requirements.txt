@@ -1,0 +1,6 @@
+matplotlib==3.9.2
+numpy==2.0.1
+persim==0.3.7
+phase_field_2d_ternary.egg==info
+ripser==0.6.10
+tda_for_phase_field==0.0.6
