@@ -50,12 +50,15 @@ def make_tda_diagram(
     Returns:
         TdaDiagram | list[TdaDiagram]: _description_
     """
+    if len(datas) == 0:
+        return TdaDiagram(np.array([]))
+
     rips = ripser.Rips(maxdim=1, coeff=2)
     if isinstance(datas, list):
         if dim0_hole:
             diagrams_h0 = []
             for data in datas:
-                if (len(data) > 2):
+                if len(data) > 2:
                     d = rips.fit_transform(data)
                     d0 = d[0]
                     d0 = d0[~np.isinf(d0).any(axis=1)]
@@ -67,7 +70,7 @@ def make_tda_diagram(
         else:
             diagrams_h1 = []
             for data in datas:
-                if (len(data) > 2):
+                if len(data) > 2:
                     diagrams_h1.append(rips.fit_transform(data)[1])
                 else:
                     diagrams_h1.append(np.array([]))
@@ -82,14 +85,23 @@ def make_tda_diagram(
 
 @overload
 def get_persistent_image_info(
-    diagrams: list[TdaDiagram], **kwargs: Any
+    diagrams: list[TdaDiagram],
+    birth_range: tuple = (0, 20),
+    pers_range: tuple = (0, 20),
+    **kwargs: Any,
 ) -> list[PersistentImage]: ...
 @overload
 def get_persistent_image_info(
-    diagrams: TdaDiagram, **kwargs: Any
+    diagrams: TdaDiagram,
+    birth_range: tuple = (0, 20),
+    pers_range: tuple = (0, 20),
+    **kwargs: Any,
 ) -> PersistentImage: ...
 def get_persistent_image_info(
-    diagrams: TdaDiagram | list[TdaDiagram], **kwargs: Any
+    diagrams: TdaDiagram | list[TdaDiagram],
+    birth_range: tuple = (0, 20),
+    pers_range: tuple = (0, 20),
+    **kwargs: Any,
 ) -> PersistentImage | list[PersistentImage]:
     """calculate the necessary information to plot persistent image
 
@@ -100,22 +112,35 @@ def get_persistent_image_info(
         PersistentImage | list[PersistentImage]: _description_
     """
 
+    if len(diagrams) == 0:
+        zeros = np.zeros((birth_range[1], pers_range[1]))
+        # print(zeros)
+        return PersistentImage(zeros)
+
+    # if isinstance(diagrams, list):
+    #     all([ValueCheck.check_ndarray_shape(data, [(1, 2)]) for data in diagrams])
+    # else:
+    #     ValueCheck.check_ndarray_shape(diagrams, [(1, 2)])
+
+    def pimgr_transform(x: TdaDiagram) -> PersistentImage:
+        if len(x) == 0:
+            zeros = np.zeros((birth_range[1], pers_range[1]))
+            return PersistentImage(zeros)
+        else:
+            pimgr = PersistenceImager(**kwargs)
+            pimgr.fit(diagrams)
+            if "birth_range" in kwargs.keys():
+                pimgr.birth_range = kwargs["birth_range"]
+
+            if "pers_range" in kwargs.keys():
+                pimgr.pers_range = kwargs["pers_range"]
+            return pimgr.transform(diagrams)
+
     if isinstance(diagrams, list):
-        all([ValueCheck.check_ndarray_shape(data, [(1, 2)]) for data in diagrams])
+        imgs = [pimgr_transform(diagram) for diagram in diagrams]
+        return imgs
     else:
-        ValueCheck.check_ndarray_shape(diagrams, [(1, 2)])
-
-    pimgr = PersistenceImager(**kwargs)
-    pimgr.fit(diagrams)
-
-    if "birth_range" in kwargs.keys():
-        pimgr.birth_range = kwargs["birth_range"]
-
-    if "pers_range" in kwargs.keys():
-        pimgr.pers_range = kwargs["pers_range"]
-    imgs = pimgr.transform(diagrams)
-    print(f"PI Resolution = {pimgr.resolution}")
-    return imgs
+        return pimgr_transform(diagrams)
 
 
 def plot_persistence_image_from_tda_diagram(
@@ -141,44 +166,50 @@ def plot_persistence_image_from_tda_diagram(
         plt.title("PI of $H_1$ for noise")
 
 
-if __name__ == "__main__":
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from phase_field_2d_ternary.matrix_plot_tools import Ternary
-    from tda_for_phase_field.random_sampling import (
-        random_sampling_from_matrices,
-        select_specific_phase,
-        npMap,
-    )
+# if __name__ == "__main__":
+#     import numpy as np
+#     import matplotlib.pyplot as plt
+#     from phase_field_2d_ternary.matrix_plot_tools import Ternary
+#     import unittest
+#     from tda_for_phase_field.random_sampling import (
+#         random_sampling_from_matrices,
+#         select_specific_phase,
+#         npMap,
+#     )
 
-    con1 = np.load("../test/test_data/output_2024-08-05-12-19-32/con1_60.npy")
-    con2 = np.load("../test/test_data/output_2024-08-05-12-19-32/con2_60.npy")
-    np.random.seed(124)
-    r = random_sampling_from_matrices([con1, con2], 1000)
-    rr = select_specific_phase(r, 1)
-    x = npMap(lambda x: x[0], rr)
-    y = npMap(lambda x: x[1], rr)
-    d = npMap(lambda x: [x[0], x[1]], rr)
+# def test_func(self)->None: # 関数テストのためのメソッド
+#     # test1----------------------------------------------
+#     con1 = np.load("../test/test_data/output_2024-08-05-12-19-32/con1_60.npy")
+#     con2 = np.load("../test/test_data/output_2024-08-05-12-19-32/con2_60.npy")
+#     np.random.seed(124)
+#     r = random_sampling_from_matrices([con1, con2], 1000)
+#     rr = select_specific_phase(r, 1)
+#     x = npMap(lambda x: x[0], rr)
+#     y = npMap(lambda x: x[1], rr)
+#     d = npMap(lambda x: [x[0], x[1]], rr)
+#     w = 20
+#     imgs = plot_persistent_image(
+#         d, birth_range=(0, w), pers_range=(0, w), pixel_size=0.5
+#     )
+#     # value1 = 1 # 引数1
+#     # value2 = 2 # 引数2
+#     # expected = 3 # 期待値
+#     # actual = main.func(value1, value2) # 関数実行結果
+#     # self.assertEqual(expected, actual) # 合否判断（結果比較）
 
-    # plot_persistent_diagram(d)
-    # plt.show()
+# test1----------------------------------------------
+# %%
+# from ripser import Rips
 
-    w = 20
-    imgs = plot_persistent_image(
-        d, birth_range=(0, w), pers_range=(0, w), pixel_size=0.5
-    )
-    # %%
-    # from ripser import Rips
+# rips = Rips(maxdim=1, coeff=2)
+# k = rips.fit_transform(d)[1]
 
-    # rips = Rips(maxdim=1, coeff=2)
-    # k = rips.fit_transform(d)[1]
+# pimgr = PersistenceImager(pixel_size=0.1, birth_range=(0, 1))
+# pimgr.fit(k)
+# pimgr.birth_range = (0, 20)
+# pimgr.pers_range = (0, 20)
 
-    # pimgr = PersistenceImager(pixel_size=0.1, birth_range=(0, 1))
-    # pimgr.fit(k)
-    # pimgr.birth_range = (0, 20)
-    # pimgr.pers_range = (0, 20)
-
-    # imgs = pimgr.transform(k)
-    # ax = plt.subplot(111)
-    # pimgr.plot_image(imgs, ax)
-    # plt.title("PI of $H_1$ for noise")
+# imgs = pimgr.transform(k)
+# ax = plt.subplot(111)
+# pimgr.plot_image(imgs, ax)
+# plt.title("PI of $H_1$ for noise")

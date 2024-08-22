@@ -3,3 +3,4 @@ result
 tda_for_phase_field.egg-info
 .mypy_cache
 tda_for_phase_field/result
+.vscode
