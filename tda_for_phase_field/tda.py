@@ -53,16 +53,25 @@ def make_tda_diagram(
     rips = ripser.Rips(maxdim=1, coeff=2)
     if isinstance(datas, list):
         if dim0_hole:
+            diagrams_h0 = []
+            for data in datas:
+                if (len(data) > 2):
+                    d = rips.fit_transform(data)
+                    d0 = d[0]
+                    d0 = d0[~np.isinf(d0).any(axis=1)]
+                    diagrams_h0.append(d0)
+                else:
+                    diagrams_h0.append(np.array([]))
+
+            return diagrams_h0
+        else:
             diagrams_h1 = []
             for data in datas:
-                d = rips.fit_transform(data)
-                d0 = d[0]
-                d0 = d0[~np.isinf(d0).any(axis=1)]
-                diagrams_h1.append(d0)
-            # diagrams_h1 = [rips.fit_transform(data)[0] for data in datas]
-        else:
-            diagrams_h1 = [rips.fit_transform(data)[1] for data in datas]
-        return diagrams_h1
+                if (len(data) > 2):
+                    diagrams_h1.append(rips.fit_transform(data)[1])
+                else:
+                    diagrams_h1.append(np.array([]))
+            return diagrams_h1
     else:
         d = rips.fit_transform(datas)
         if dim0_hole:
