@@ -37,12 +37,12 @@ def test_plot_tda() -> None:
     rcon1 = select_specific_phase(rcon, 1)
     r = make_tda_diagram(npMap(lambda x: [x[0], x[1]], rcon1))
     rr = get_persistent_image_info(r, birth_range=(0, 20), pers_range=(0, 20))
-    if __name__ == "__main__":
-        print("--------------------------------------------------")
-        print("persistent diagram of phase 1 (=phase B) of output_2024-08-05-12-19-32")
-        plt.imshow(rr)
-        plt.colorbar()
-        plt.show()
+    # if __name__ == "__main__":
+    #     print("--------------------------------------------------")
+    #     print("persistent diagram of phase 1 (=phase B) of output_2024-08-05-12-19-32")
+    #     plt.imshow(rr)
+    #     plt.colorbar()
+    #     plt.show()
     rr_ = get_persistent_image_info(
         [r, r], birth_range=(0, 20), pers_range=(0, 20)
     )  # リストを渡すとリストを返す。
@@ -53,11 +53,11 @@ def test_tda_with_two_phase_system() -> None:
     """select specific phaseで相が見つけられなかったときのテスト"""
     con1 = np.load(f"{data_file_path}/output_2024-08-05-12-19-32/con1_60.npy")
     con2 = np.zeros_like(con1)  # 成分Bが全く含まれていないケース
-    if __name__ == "__main__":
-        print("--------------------------------------------------")
-        print("No phase B case")
-        Ternary.imshow3(con1, con2)
-        plt.show()
+    # if __name__ == "__main__":
+    #     print("--------------------------------------------------")
+    #     print("No phase B case")
+    #     Ternary.imshow3(con1, con2)
+    #     plt.show()
     np.random.seed(123)
     rcon = random_sampling_from_matrices([con1, con2], 1000)
     rcon1 = select_specific_phase(rcon, 1)
@@ -69,19 +69,26 @@ def test_tda_with_two_phase_system() -> None:
     rr = get_persistent_image_info(r, birth_range=(0, 20), pers_range=(0, 20))
     assert np.all(rr == 0)  # persistent_image_infoは20*20の0ベクトルであるはず
     assert rr.shape == (20, 20)
-    if __name__ == "__main__":
-        print("--------------------------------------------------")
-        print("Persistent diagram")
-        plt.imshow(rr)
-        plt.colorbar()
-        plt.show()
+    # if __name__ == "__main__":
+    #     print("--------------------------------------------------")
+    #     print("Persistent diagram")
+    #     plt.imshow(rr)
+    #     plt.colorbar()
+    #     plt.show()
 
     # get_persistent_image_info にlistを渡すとき----------------
     rr_ = get_persistent_image_info([r, r], birth_range=(0, 20), pers_range=(0, 20))
     assert np.all(rr_[0] == 0) & np.all(rr_[1] == 0)
 
+    # get_persistent_image_info にlistを渡すとき (2)----------------
+    rcon2 = select_specific_phase(rcon, 2)
+    r2 = make_tda_diagram(npMap(lambda x: [x[0], x[1]], rcon2))
+    rr2_ = get_persistent_image_info([r, r2], birth_range=(0, 20), pers_range=(0, 20))
+    assert np.all(rr2_[0] == 0)
+    # print(pp[1])
+
 
 if __name__ == "__main__":
-    test_plot_tda()
+    # test_plot_tda()
     test_tda_with_two_phase_system()
 # %%

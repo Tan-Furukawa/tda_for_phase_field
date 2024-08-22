@@ -128,17 +128,17 @@ def get_persistent_image_info(
             return PersistentImage(zeros)
         else:
             pimgr = PersistenceImager(**kwargs)
-            pimgr.fit(diagrams)
+            pimgr.fit(x)
             if "birth_range" in kwargs.keys():
                 pimgr.birth_range = kwargs["birth_range"]
 
             if "pers_range" in kwargs.keys():
                 pimgr.pers_range = kwargs["pers_range"]
-            return pimgr.transform(diagrams)
+            k = pimgr.transform(x)
+            return PersistentImage(k)
 
     if isinstance(diagrams, list):
-        imgs = [pimgr_transform(diagram) for diagram in diagrams]
-        return imgs
+        return [pimgr_transform(diagram) for diagram in diagrams]
     else:
         return pimgr_transform(diagrams)
 
