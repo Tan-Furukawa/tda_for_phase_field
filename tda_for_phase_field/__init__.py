@@ -1,5 +1,7 @@
-from . import random_sampling
-from . import tda
-from . import value_check
+# from . import random_sampling
+# from . import tda
+# from . import value_check
+from .random_sampling import SamplingFromMatrix, SelectPhaseFromSamplingMatrix
+from .tda import PersistentDiagram
 
-__all__ = ["random_sampling", "tda", "value_check"]
+__all__ = ["SamplingFromMatrix", "SelectPhaseFromSamplingMatrix", "PersistentDiagram"]

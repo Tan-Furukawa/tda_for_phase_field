@@ -1,7 +1,8 @@
 __pycache__
 result
-tda_for_phase_field.egg-info
 .mypy_cache
+tda_for_phase_field.egg-info
 tda_for_phase_field/result
 .vscode
 .pytest_cache
+test/__pycache__

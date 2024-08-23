@@ -7,209 +7,203 @@ import matplotlib.pyplot as plt
 from tda_for_phase_field.value_check import ValueCheck
 from numpy.typing import NDArray
 from typing import overload, NewType, TypeAlias, Any
-
-TdaDiagram = NewType("TdaDiagram", NDArray)
-PersistentImage = NewType("PersistentImage", NDArray)
+# from tda_for_phase_field.random_sampling import random_sampling_from_matrices
 
 
-def plot_persistent_diagram(data: NDArray) -> None:
-    """plot persistent diagram
-
-    Args:
-        data (NDArray): _description_
+class PersistentDiagram:
     """
-    ValueCheck.check_ndarray_shape(data, [(1, 2)])
-    dgm = ripser.ripser(data)["dgms"]
-    persim.plot_diagrams(dgm, show=True)
+    A class to compute and visualize persistent diagrams and persistent images for topological data analysis.
 
+    This class handles the computation of persistent homology for 0-dimensional and 1-dimensional features
+    from a set of input data points. It generates persistent diagrams and transforms them into persistent images
+    for further analysis or visualization.
 
-def plot_persistent_image(
-    datas: NDArray | list[NDArray], **kwargs: Any
-) -> PersistentImage | list[PersistentImage]:
-    tda_diagram = make_tda_diagram(datas)
-    imgs = get_persistent_image_info(tda_diagram, **kwargs)
-    plot_persistence_image_from_tda_diagram(imgs)
-    return imgs
+    Attributes:
+        birth_range (tuple[float, float]): The range of birth times to be considered for the persistent images.
+        pers_range (tuple[float, float]): The range of persistence times to be considered for the persistent images.
+        pixcel_size (float): The size of each pixel in the persistent image.
+        xy (NDArray): A 2D array combining the input x and y coordinates.
+        hom0_diagram (list[list[float]]): The persistent diagram for 0-dimensional homology features.
+        hom0_image_info (NDArray): The persistent image for 0-dimensional homology features.
+        hom1_diagram (list[list[float]]): The persistent diagram for 1-dimensional homology features.
+        hom1_image_info (NDArray): The persistent image for 1-dimensional homology features.
+        persistent_image_size_for_small_dataset (tuple[int, int]): The size of the output persistent images for small datasets.
+        data_length_threshold (int): The minimum number of data points required to compute persistent homology.
 
-
-@overload
-def make_tda_diagram(datas: NDArray, dim0_hole: bool = True) -> TdaDiagram: ...
-@overload
-def make_tda_diagram(
-    datas: list[NDArray], dim0_hole: bool = True
-) -> list[TdaDiagram]: ...
-def make_tda_diagram(
-    datas: NDArray | list[NDArray], dim0_hole: bool = False
-) -> TdaDiagram | list[TdaDiagram]:
-    """calculate tda information
-
-    Args:
-        datas (NDArray | list[NDArray]): array of numpy.ndarray or their list.
-        dim0_hole (bool, optional): plot dim0 information. Defaults to True.
-
-    Returns:
-        TdaDiagram | list[TdaDiagram]: _description_
+    Methods:
+        __init__(x, y, data_length_threshold=100, birth_range=(0, 30), pers_range=(0, 30), pixcel_size=0.8):
+            Initializes the PersistentDiagram object with the provided parameters.
+        get_persistent_image_info(plot=True):
+            Computes and returns the persistent images for both 0-dimensional and 1-dimensional features.
+        make_hom0_diagram():
+            Computes the persistent diagram for 0-dimensional features using the Ripser library.
+        calc_hom0_persistent_image_info():
+            Transforms the 0-dimensional persistent diagram into a persistent image and returns it.
+        make_hom1_diagram():
+            Computes the persistent diagram for 1-dimensional features using the Ripser library.
+        calc_hom1_persistent_image_info():
+            Transforms the 1-dimensional persistent diagram into a persistent image and returns it.
+        plot_hom0_persistent_image():
+            Plots the persistent image for 0-dimensional features.
+        plot_hom1_persistent_image():
+            Plots the persistent image for 1-dimensional features.
     """
-    if len(datas) == 0:
-        return TdaDiagram(np.array([]))
 
-    rips = ripser.Rips(maxdim=1, coeff=2)
-    if isinstance(datas, list):
-        if dim0_hole:
-            diagrams_h0 = []
-            for data in datas:
-                if len(data) > 2:
-                    d = rips.fit_transform(data)
-                    d0 = d[0]
-                    d0 = d0[~np.isinf(d0).any(axis=1)]
-                    diagrams_h0.append(d0)
-                else:
-                    diagrams_h0.append(np.array([]))
+    def __init__(
+        self,
+        x: NDArray,
+        y: NDArray,
+        data_length_threshold: int = 100,
+        birth_range: tuple[float, float] = (0, 30),
+        pers_range: tuple[float, float] = (0, 30),
+        pixcel_size: float = 0.8,
+    ) -> None:
+        """
+        Initializes the PersistentDiagram object.
 
-            return diagrams_h0
+        Args:
+            x (NDArray): The x-coordinates of the input data points.
+            y (NDArray): The y-coordinates of the input data points.
+            data_length_threshold (int, optional): The minimum number of data points required to compute persistent homology.
+                Defaults to 100.
+            birth_range (tuple[float, float], optional): The range of birth times to consider for the persistent images.
+                Defaults to (0, 30).
+            pers_range (tuple[float, float], optional): The range of persistence times to consider for the persistent images.
+                Defaults to (0, 30).
+            pixcel_size (float, optional): The size of each pixel in the persistent image. Defaults to 0.8.
+
+        Raises:
+            ValueError: If the lengths of `x` and `y` are not the same.
+            ValueError: If the dimensions of `x` or `y` are not 1D.
+        """
+        if not len(x) == len(y):
+            raise ValueError("x and y must have same length")
+        if not np.ndim(x) == 1:
+            raise ValueError("the dimension of x must be 1")
+        if not np.ndim(y) == 1:
+            raise ValueError("the dimension of y must be 1")
+
+        self.birth_range = birth_range
+        self.pers_range = pers_range
+        self.pixcel_size = pixcel_size
+
+        self.xy = np.column_stack([x, y])
+        self.hom0_diagram: list[list[float]] = [[]]
+        self.hom0_image_info: NDArray = np.array([[]])
+        self.hom1_diagram: list[list[float]] = []
+        self.hom1_image_info: NDArray = np.array([])
+
+        self.persistent_image_size_for_small_dataset = (10, 10)
+        self.data_length_threshold = data_length_threshold
+
+    def get_persistent_image_info(self, plot: bool = True) -> tuple[NDArray, NDArray]:
+        """
+        Computes and returns the persistent images for both 0-dimensional and 1-dimensional features.
+
+        Args:
+            plot (bool, optional): If True, the persistent images will be plotted. Defaults to True.
+
+        Returns:
+            tuple[NDArray, NDArray]: The persistent images for 0-dimensional and 1-dimensional features.
+        """
+        self.make_hom0_diagram()
+        hom0 = self.calc_hom0_persistent_image_info()
+
+        self.make_hom1_diagram()
+        hom1 = self.calc_hom1_persistent_image_info()
+        if plot:
+            self.plot_hom0_persistent_image()
+            plt.show()
+            self.plot_hom1_persistent_image()
+            plt.show()
+        return hom0, hom1
+
+    def make_hom0_diagram(self) -> list[list[float]]:
+        """
+        Computes the persistent diagram for 0-dimensional features using the Ripser library.
+
+        Returns:
+            list[list[float]]: The 0-dimensional persistent diagram.
+        """
+        rips = ripser.Rips(maxdim=1, coeff=2)
+        if len(self.xy) > self.data_length_threshold:
+            d = rips.fit_transform(self.xy)
+            d0 = d[0]
+            d0 = d0[~np.isinf(d0).any(axis=1)]
+            self.hom0_diagram = d0
+            return d0
         else:
-            diagrams_h1 = []
-            for data in datas:
-                if len(data) > 2:
-                    diagrams_h1.append(rips.fit_transform(data)[1])
-                else:
-                    diagrams_h1.append(np.array([]))
-            return diagrams_h1
-    else:
-        d = rips.fit_transform(datas)
-        if dim0_hole:
-            return d[0]
+            self.hom0_diagram = []
+            return []
+
+    def calc_hom0_persistent_image_info(self) -> NDArray:
+        """
+        Transforms the 0-dimensional persistent diagram into a persistent image.
+
+        Returns:
+            NDArray: The persistent image for 0-dimensional features.
+        """
+        if len(self.hom0_diagram) == 0:
+            zeros = np.zeros((self.persistent_image_size_for_small_dataset[0],))
+            self.hom0_image_info = zeros
+            return zeros
         else:
-            return d[1]
+            pimgr = PersistenceImager(pixel_size=self.pixcel_size)
+            pimgr.fit(self.hom0_diagram)
+            pimgr.birth_range = self.birth_range
+            pimgr.pers_range = self.pers_range
+            res = pimgr.transform(self.hom0_diagram)
+            self.hom0_image_info = res[0, :]
+            return res[0, :]
 
+    def make_hom1_diagram(self) -> list[list[float]]:
+        """
+        Computes the persistent diagram for 1-dimensional features using the Ripser library.
 
-@overload
-def get_persistent_image_info(
-    diagrams: list[TdaDiagram],
-    birth_range: tuple = (0, 20),
-    pers_range: tuple = (0, 20),
-    **kwargs: Any,
-) -> list[PersistentImage]: ...
-@overload
-def get_persistent_image_info(
-    diagrams: TdaDiagram,
-    birth_range: tuple = (0, 20),
-    pers_range: tuple = (0, 20),
-    **kwargs: Any,
-) -> PersistentImage: ...
-def get_persistent_image_info(
-    diagrams: TdaDiagram | list[TdaDiagram],
-    birth_range: tuple = (0, 20),
-    pers_range: tuple = (0, 20),
-    **kwargs: Any,
-) -> PersistentImage | list[PersistentImage]:
-    """calculate the necessary information to plot persistent image
-
-    Args:
-        diagrams (TdaDiagram | list[TdaDiagram]): _description_
-
-    Returns:
-        PersistentImage | list[PersistentImage]: _description_
-    """
-
-    if len(diagrams) == 0:
-        zeros = np.zeros((birth_range[1], pers_range[1]))
-        # print(zeros)
-        return PersistentImage(zeros)
-
-    # if isinstance(diagrams, list):
-    #     all([ValueCheck.check_ndarray_shape(data, [(1, 2)]) for data in diagrams])
-    # else:
-    #     ValueCheck.check_ndarray_shape(diagrams, [(1, 2)])
-
-    def pimgr_transform(x: TdaDiagram) -> PersistentImage:
-        if len(x) == 0:
-            zeros = np.zeros((birth_range[1], pers_range[1]))
-            return PersistentImage(zeros)
+        Returns:
+            list[list[float]]: The 1-dimensional persistent diagram.
+        """
+        rips = ripser.Rips(maxdim=1, coeff=2)
+        if len(self.xy) > self.data_length_threshold:
+            self.hom1_diagram = rips.fit_transform(self.xy)[1]
+            return self.hom1_diagram
         else:
-            pimgr = PersistenceImager(**kwargs)
-            pimgr.fit(x)
-            if "birth_range" in kwargs.keys():
-                pimgr.birth_range = kwargs["birth_range"]
+            self.hom1_diagram = [[]]
+            return [[]]
 
-            if "pers_range" in kwargs.keys():
-                pimgr.pers_range = kwargs["pers_range"]
-            k = pimgr.transform(x)
-            return PersistentImage(k)
+    def calc_hom1_persistent_image_info(self) -> NDArray:
+        """
+        Transforms the 1-dimensional persistent diagram into a persistent image.
 
-    if isinstance(diagrams, list):
-        return [pimgr_transform(diagram) for diagram in diagrams]
-    else:
-        return pimgr_transform(diagrams)
+        Returns:
+            NDArray: The persistent image for 1-dimensional features.
+        """
+        if len(self.hom1_diagram) == 1:
+            zeros = np.zeros(
+                (
+                    self.persistent_image_size_for_small_dataset[0],
+                    self.persistent_image_size_for_small_dataset[1],
+                )
+            )
+            self.hom1_image_info = zeros
+            return zeros
+        else:
+            pimgr = PersistenceImager(pixel_size=self.pixcel_size)
+            pimgr.fit(self.hom1_diagram)
+            pimgr.birth_range = self.birth_range
+            pimgr.pers_range = self.pers_range
+            res = pimgr.transform(self.hom1_diagram)
+            self.hom1_image_info = res
+            return res
 
+    def plot_hom0_persistent_image(self) -> None:
+        """
+        Plots the persistent image for 0-dimensional features.
+        """
+        plt.imshow(self.hom0_image_info.reshape(-1, 1), origin="lower")
 
-def plot_persistence_image_from_tda_diagram(
-    imgs: PersistentImage | list[PersistentImage],
-) -> None:
-    """plot persistence image (PI)
-
-    Args:
-        imgs (PersistentImage | list[PersistentImage]): _description_
-    """
-    if isinstance(imgs, list):
-        pimgr = PersistenceImager()
-        for img in imgs:
-            plt.figure(figsize=(5, 5))
-            ax = plt.subplot(111)
-            pimgr.plot_image(img, ax)
-            plt.title("PI of $H_1$ for noise")
-    else:
-        pimgr = PersistenceImager()
-        plt.figure(figsize=(5, 5))
-        ax = plt.subplot(111)
-        pimgr.plot_image(imgs, ax)
-        plt.title("PI of $H_1$ for noise")
-
-
-# if __name__ == "__main__":
-#     import numpy as np
-#     import matplotlib.pyplot as plt
-#     from phase_field_2d_ternary.matrix_plot_tools import Ternary
-#     import unittest
-#     from tda_for_phase_field.random_sampling import (
-#         random_sampling_from_matrices,
-#         select_specific_phase,
-#         npMap,
-#     )
-
-# def test_func(self)->None: # 関数テストのためのメソッド
-#     # test1----------------------------------------------
-#     con1 = np.load("../test/test_data/output_2024-08-05-12-19-32/con1_60.npy")
-#     con2 = np.load("../test/test_data/output_2024-08-05-12-19-32/con2_60.npy")
-#     np.random.seed(124)
-#     r = random_sampling_from_matrices([con1, con2], 1000)
-#     rr = select_specific_phase(r, 1)
-#     x = npMap(lambda x: x[0], rr)
-#     y = npMap(lambda x: x[1], rr)
-#     d = npMap(lambda x: [x[0], x[1]], rr)
-#     w = 20
-#     imgs = plot_persistent_image(
-#         d, birth_range=(0, w), pers_range=(0, w), pixel_size=0.5
-#     )
-#     # value1 = 1 # 引数1
-#     # value2 = 2 # 引数2
-#     # expected = 3 # 期待値
-#     # actual = main.func(value1, value2) # 関数実行結果
-#     # self.assertEqual(expected, actual) # 合否判断（結果比較）
-
-# test1----------------------------------------------
-# %%
-# from ripser import Rips
-
-# rips = Rips(maxdim=1, coeff=2)
-# k = rips.fit_transform(d)[1]
-
-# pimgr = PersistenceImager(pixel_size=0.1, birth_range=(0, 1))
-# pimgr.fit(k)
-# pimgr.birth_range = (0, 20)
-# pimgr.pers_range = (0, 20)
-
-# imgs = pimgr.transform(k)
-# ax = plt.subplot(111)
-# pimgr.plot_image(imgs, ax)
-# plt.title("PI of $H_1$ for noise")
+    def plot_hom1_persistent_image(self) -> None:
+        """
+        Plots the persistent image for 1-dimensional features.
+        """
+        plt.imshow(self.hom1_image_info.transpose(), origin="lower")
